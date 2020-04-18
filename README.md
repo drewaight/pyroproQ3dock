@@ -23,13 +23,14 @@ PyRoproQ3dock v 0.2
 
 1. pyrosetta (https://www.rosettacommons.org/software/license-and-download)
 2. proQ3 (https://bitbucket.org/ElofssonLab/proq3/src/master/)
-3. pdb-tools (https://pypi.org/project/pdb-tools/) 
+3. megadock (https://www.bi.cs.titech.ac.jp/megadock/)
+4. pdb-tools (https://pypi.org/project/pdb-tools/) 
     currently these need to be in the PATH
-4. Parapred  (https://github.com/eliberis/parapred)
+5. Parapred  (https://github.com/eliberis/parapred)
     also needs to be in the PATH
-5. Anarci (http://opig.stats.ox.ac.uk/webapps/newsabdab/sabpred/anarci/)
-    also needt to be in the PATH
-6. Packages - All the packages required to run the above programs plus
+6. Anarci (http://opig.stats.ox.ac.uk/webapps/newsabdab/sabpred/anarci/)
+    also needs to be in the PATH
+7. Packages - All the packages required to run the above programs plus
     a. biopython
     b. numpy 
     c. pandas
