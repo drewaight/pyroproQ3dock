@@ -30,10 +30,10 @@ PyRoproQ3dock v 0.2
     also needs to be in the PATH
 6. Anarci (http://opig.stats.ox.ac.uk/webapps/newsabdab/sabpred/anarci/)
     also needs to be in the PATH
-7. Packages - All the packages required to run the above programs plus
-    a. biopython
-    b. numpy 
-    c. pandas
-    d. biopandas
-    e. mpi4py
+7. Packages - All the packages required to run the above programs plus \n
+    a. biopython \n
+    b. numpy \n
+    c. pandas \n
+    d. biopandas \n
+    e. mpi4py \n
     f. GNU parallel
