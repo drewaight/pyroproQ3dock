@@ -67,7 +67,7 @@ def main(pdbfile, scheme, outfile):
         df['residue_insertion'] = df['residue_insertion'].map(seq_dict)
         df['residue_number'] = df['residue_insertion']
         df.drop(['residue_insertion'], axis=1, inplace = True)
-        df['insertion'] = None
+        df['insertion'] = ''
         return(df)
     
     hdf = seq_order(hdf)

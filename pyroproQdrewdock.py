@@ -26,6 +26,7 @@ import chain_check
 import collector
 import natural_sort
 import timeit
+import progressbar
 
 def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     # The .theano directory gets very large RAM usage over time using ProQ3D
@@ -41,7 +42,7 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     subprocess.run(['cp', sab_dir + structure, Path(structure).stem])
     os.chdir(Path(structure).stem)
 
-    # The biopandas_cleanup module selects the best vL vH Epitope complex from a structure it uses Bfactors as criteria
+    # The biopandas_cleanup module selects the best vL vH Epitope complex from a structure. It uses Bfactors as criteria
     # the best complex is relabelled 'L' 'H' 'A' and the antibodies are renumbered by Anarci with the input scheme
     # and returns dataframes with the heavy and light stats. See biopandas_cleanup.py for more information
     struct_clean = Path(structure).stem + '_1.pdb'
@@ -57,19 +58,19 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
 
     cwd = os.getcwd()
 
-    # The program antibody_info_and_dock.prep.py calls structure_extract_relax.py which uses pyrosetta to run packing and
-    # minimization on the input structure and extracts the releveant antibody CDR statistics and Dunbrack clusters into a returned dataframe.
-    # After this the Aho numbered CDRs + 3 stem residues are set to 1.0 in the Bfactor column and all other residues are set to 0.0
-    # the antibody_info_and_dock.prep then separates the LH and A molecules randomizes the orientation and slides them back together
-    # in preparation for docking. 
+    # The program antibody_info_and_dock.prep.py calls structure_extract_relax.py which uses pyrosetta to run packing 
+    # and minimization on the input structure and extracts the releveant antibody CDR statistics and Dunbrack clusters 
+    # into a returned dataframe. After this the Aho numbered CDRs + 3 stem residues are set to 1.0 in the Bfactor column
+    # and all other residues are set to 0.0 the antibody_info_and_dock.prep then separates the LH and A molecules 
+    # randomizes the orientation and slides them back together in preparation for docking. 
     abdf = antibody_info_and_dock_prep.main(cwd, struct_clean, light_chain)
         
     h_stats.to_json('h_stats.json')
     l_stats.to_json('l_stats.json')
     abdf.to_json('abdf.json')
 
-    # At this point we want to fork the two prepared structures into the broad CDR definition above, and a targeted defintion using
-    # Parapred. The randomized LH structure is copied with the ppd extension to denote Parapred scoring
+    # At this point we want to fork the two prepared structures into the broad CDR definition above, and a targeted 
+    # defintion using Parapred. The randomized LH structure is copied with the ppd extension to denote Parapred scoring
     test_str = Path(struct_clean).stem + '_rand_LH.pdb'
     test2_str = Path(struct_clean).stem + '_ppd_rand_LH.pdb'
     subprocess.run(['cp', test_str, test2_str])
@@ -80,8 +81,8 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     # Execute parapred on the copied structure 
     subprocess.run(['parapred', 'pdb', test2_str])
     
-    # The bfactor_to_blocking_biopandas.py program simply converts all residues with bfactor == 0 to the residue BLK which avoids rigid
-    # body docking on these residues (ZDOCK and Megadock) standard
+    # The bfactor_to_blocking_biopandas.py program simply converts all residues with bfactor == 0 to the residue BLK 
+    # which avoids rigid body docking on these residues (ZDOCK and Megadock) standard
     bfactor_to_blocking_biopandas.main(test_str)
     bfactor_to_blocking_biopandas.main(test2_str)
     block_cdr = Path(test_str).stem + "_blocking.pdb"
@@ -117,14 +118,15 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     subprocess.run(['mv', Path(struct_clean).stem + '_ppd_rand_LH_blocking-' + Path(struct_clean).stem + '_rand_A.out',
                      Path(struct_clean).stem + '_ppd_complex.out'])                     
     
-    # The zrank_processing.py module rescores the megadock output files using the zrank program, it calls the mpi enabled module zrank_mpi.py 
-    # and returns a dataframe of the results sorted by zscore
+    # The zrank_processing.py module rescores the megadock output files using the zrank program, it calls the mpi 
+    # enabled module zrank_mpi.py and returns a dataframe of the results sorted by zscore
     infile = Path(struct_clean).stem + '_complex.out'
     infile2 = Path(struct_clean).stem + '_ppd_complex.out'
     df_zsc = zrank_processing.main(infile, recep_str, test_str, exec)
     df2_zsc = zrank_processing.main(infile2, recep_str, test2_str, exec)
 
-    # We want to keep trach of which method performs better, so add a identifier column before merging and resorting the zranked datasets
+    # We want to keep trach of which method performs better, so add a identifier column before merging and resorting the
+    # zranked datasets
     df_zsc['method'] = "CDR"
     df2_zsc['method'] = "Parapred"
     df_zsc = pd.concat([df_zsc, df2_zsc], ignore_index=True)
@@ -144,7 +146,8 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     df1['score'] = df1['score'].map(lambda x: '%.2f' % x)
     df1['zrank'] = df1['zrank'].map(lambda x: '%.5f' % x)
 
-    # We want to keep track of the zranked stats, this data is split off as dfout, the rest gets re-written to the outfile for decoy generation
+    # We want to keep track of the zranked stats, this data is split off as dfout, the rest gets re-written to the 
+    # outfile for decoy generation
     df3 = df1.drop(['id','zrank','method'],axis=1)
     df3.to_csv(outfp, sep='\t', mode='a', header=False, index=False)
     dfout = df1.drop(['rot1','rot2','rot3','vox1','vox2','vox3','id','score'],axis=1)
@@ -153,8 +156,9 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     dfout.to_csv('zrank.csv')
     dfout.to_json('zrank.json')
 
-    # The decoygen.py program converts the zranked list of rotational coordinates to back into pdb complexes. The number of complexes
-    # returned is set by the decoynum variable, complex_0.pdb (native complex) is added to the beginning of the list as the reference.
+    # The decoygen.py program converts the zranked list of rotational coordinates to back into pdb complexes. The number
+    # of complexes returned is set by the decoynum variable, complex_0.pdb (native complex) is added to the beginning of
+    # the list as the reference.
     zinfile = Path(struct_clean).stem + '_complex_zranked.out'
     complexes = decoygen.main(recep_str, zinfile, decoynum, test_str)
     complexes.append('complex_0.pdb')
@@ -167,14 +171,27 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     jsonfile="relaxed_list.json"
     reference='complex_0_relaxed.pdb'
 
-    # The relax_mpi.py program uses mpi to run the drew_relax.py program over 16 cores. The output is a json file of the relaxed and interface
-    # parameters of each complex
-    print('Running Relax:')
-    subprocess.run(['mpiexec', '-n', '16', 'python', exec+'relax_mpi.py', 'relax_list.txt', cwd], 
+    # The relax_mpi.py program uses mpi to run the drew_relax.py program over 16 cores. The output is a json file of the
+    # relaxed and interface parameters of each complex
+    print('Running Relax: '+Path(structure).stem)
+
+    bar = progressbar.ProgressBar(max_value=progressbar.UnknownLength).start()
+    p = subprocess.Popen(['mpiexec', '-n', '16', 'python', exec+'relax_mpi.py', 'relax_list.txt', cwd], 
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
-    # The rmsd_align_mpi.py program uses mpi to run rmsd.py which aligns all of the relaxed complexes by their Antigen chain, and calculates 
-    # the RMSD value from the reference pose
+    result = []
+    while p.stdout is not None:
+        bar.update()
+        line = p.stdout.readline()
+        result.append(line.decode('UTF-8').rstrip('\r'))
+        if not line:
+            print("\n")
+            p.stdout.flush()
+            break  
+    with open("relax_mpi.log", 'w') as f:
+        f.write(''.join(result))
+
+    # The rmsd_align_mpi.py program uses mpi to run rmsd.py which aligns all of the relaxed complexes by their Antigen 
+    # chain, and calculates the RMSD value from the reference pose
     print('Align and Rmsd:')
     subprocess.run(['mpiexec', '-n', '16', 'python', exec+'rmsd_align_mpi.py', cwd, jsonfile, reference], 
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -186,16 +203,18 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     # We want ProQ3D to use our relaxed structures write the list for it to process
     with open('proQ3_list.txt', 'w') as p:
         for cmplx in complex_list:
-            pandas_anarci_numberer.main(Path(cmplx).stem + '_relaxed.pdb', 'chothia', Path(cmplx).stem + '_relaxed_cho.pdb' )
+            pandas_anarci_numberer.main(Path(cmplx).stem + '_relaxed.pdb', 'chothia', 
+                                        Path(cmplx).stem + '_relaxed_cho.pdb' )
             subprocess.run(['bash', exec+'ProQDock_prepare.sh', Path(cmplx).stem + '_relaxed_cho.pdb'])
             p.write(Path(cmplx).stem + '_relaxed_cho_reres.pdb'+'\n')
 
-    # ProQ3D is a big complicated program. It is called using GNU parallel through the proq3_all.sh script, if there is not yet a profile
-    # one is created in the top level working directory. All ProQ3D output is put into the run_all directory
+    # ProQ3D is a big complicated program. It is called using GNU parallel through the proq3_all.sh script, if there is 
+    # not yet a profile one is created in the top level working directory. All ProQ3D output is put into the run_all 
+    # directory
     try:
         print('ProQ3 processing')
-        subprocess.run([ProQ3_dir + 'proq3_all.sh', './complex.fasta', 'proQ3_list.txt', topdir+'/'+Path(structure).stem+'_profile',
-                                    'run_all', '16'], stdout=subprocess.PIPE)
+        subprocess.run([ProQ3_dir + 'proq3_all.sh', './complex.fasta', 'proQ3_list.txt', 
+                        topdir+'/'+Path(structure).stem+'_profile', 'run_all', '16'], stdout=subprocess.PIPE)
     except:
         print('ProQ3 parallel error')
     
@@ -215,7 +234,8 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     total_sc = total_sc.merge(dfout, how='left', on='complex') 
     total_sc['structure'] = Path(structure).stem  
     abdf['structure'] = Path(structure).stem
-    # Merge the antibody information the single statistics for the antibody including CDR classifications are populated to all the complexes
+    # Merge the antibody information the single statistics for the antibody including CDR classifications are populated
+    # to all the complexes
     total_sc = total_sc.merge(abdf, how='right')
     # Shuffle important columns to the front
     col = total_sc.pop("zrank")
@@ -240,6 +260,7 @@ def main(structure, sab_dir, exec, ProQ3_dir, decoynum):
     return(total_sc)  
 
 if __name__ == '__main__':
-    main(sys.argv[1], exec = '/media/hdd1/roproQ3drew/drewdock_exec/', sab_dir = '../sabdab_short/',
+    main(sys.argv[1], exec = '/media/hdd1/roproQ3drew/drewdock_exec/', 
+    sab_dir = '/home/drewaight/hdd1/structure_finder/output/output_folder/',
     ProQ3_dir = '/home/drewaight/proq3/', decoynum = 96)
     

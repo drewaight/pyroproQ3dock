@@ -5,12 +5,12 @@ import re
 import subprocess
 from pathlib import Path
 import fileinput
-#outfile='5veb_renum.pdb'
 
 # ----------------------------------------------------------Anarci--------------------------------------------------
 
 def anarci(seq,scheme):
-    out =subprocess.run(['anarci', '--sequence', seq, '--scheme', scheme, '--assign_germline'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    out =subprocess.run(['anarci', '--sequence', seq, '--scheme', scheme, '--assign_germline'], 
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = out.stdout.decode("utf-8").splitlines()
     stats = {}
     hd = []
@@ -49,7 +49,7 @@ def main(pdbfile, scheme, outfile):
     from biopandas.pdb import PandasPdb
     
     ppdb = PandasPdb()
-    ppdb.read_pdb('./'+pdbfile)
+    ppdb.read_pdb(pdbfile)
 
     chains = ppdb.df['ATOM']['chain_id'].unique()
     chain_num = len(chains)
@@ -111,7 +111,7 @@ def main(pdbfile, scheme, outfile):
         df['residue_insertion'] = df['residue_insertion'].map(seq_dict)
         df['residue_number'] = df['residue_insertion']
         df.drop(['residue_insertion'], axis=1, inplace = True)
-        df['insertion'] = None
+        df['insertion'] = ''
         return(df)
     
     hdf = seq_order(hdf)
@@ -129,7 +129,7 @@ def main(pdbfile, scheme, outfile):
 
     hdf_stats, hdf_renum = anarci(h_seq, scheme)
     hdf_renum.drop(['chain'], inplace = True, axis=1)
-    hdf_renum['residue_number'] = np.arange(len(hdf_renum))
+    hdf_renum['residue_number'] = np.arange(len(hdf_renum)) + 1
     hdf.drop(hdf[hdf['residue_number'] > int(hdf_stats['stop'])].index, inplace=True)
     hdf = hdf.merge(hdf_renum, how='left') \
     .drop(columns=['residue_number', 'insertion']) \
@@ -137,7 +137,7 @@ def main(pdbfile, scheme, outfile):
 
     ldf_stats, ldf_renum = anarci(l_seq, scheme)
     ldf_renum.drop(['chain'], inplace = True, axis=1)
-    ldf_renum['residue_number'] = np.arange(len(ldf_renum))
+    ldf_renum['residue_number'] = np.arange(len(ldf_renum)) + 1
     ldf.drop(ldf[ldf['residue_number'] > int(ldf_stats['stop'])].index, inplace=True)
     ldf = ldf.merge(ldf_renum, how='left') \
     .drop(columns=['residue_number', 'insertion']) \
@@ -150,13 +150,14 @@ def main(pdbfile, scheme, outfile):
         df['atom_number'] = df['atom_number'].map(atom_dict)
         return(df)
     
+    
     ppdb.df['ATOM'].drop(ppdb.df['ATOM'].index, inplace=True)
     hdf = hdf.append(ldf, sort=False)
     hdf = hdf.append(adf, sort=False)
     hdf = atom_renum(hdf).reset_index(drop=True)
     ppdb.df['ATOM'] = ppdb.df['ATOM'].append(hdf, sort=False).reset_index(drop=True)
     ppdb.to_pdb(outfile, records=['ATOM'])
-    print(ppdb.df['ATOM'].head())
+    # print(ppdb.df['ATOM'].head())
 
     with open(Path(outfile).stem + '_HL.pdb', 'w') as f1:
         subprocess.run(['pdb_selchain','-H,L', outfile],stdout=f1)
@@ -173,6 +174,7 @@ def main(pdbfile, scheme, outfile):
     return(h_stats, l_stats)
 
 if __name__ == "__main__":
-    main(pdbfile=sys.argv[1], scheme='chothia', outfile=sys.argv[2])
+    main(pdbfile="/media/hdd1/roproQ3drew/6b0h/6b0h.pdb", 
+    scheme='aho', outfile="6b0h_test.pdb")
 
 

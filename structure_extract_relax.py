@@ -36,8 +36,8 @@ def main(path, structure, light_chain):
             <RESIDUE_SELECTORS>
             </RESIDUE_SELECTORS>
             <TASKOPERATIONS>
-                <RestrictToRepacking name="no_design" /> #Note that there are no options except name to set.
-                <ExtraRotamersGeneric name="extrachi" ex1="1" ex2="1" ex1_sample_level="1" ex2_sample_level="1" /> #This one allows you to set several options, however.
+                <RestrictToRepacking name="no_design" /> 
+                <ExtraRotamersGeneric name="extrachi" ex1="1" ex2="1" ex1_sample_level="1" ex2_sample_level="1" /> 
             </TASKOPERATIONS>
             <FILTERS>
             </FILTERS>
@@ -68,11 +68,21 @@ def main(path, structure, light_chain):
     print(abinfo)    
 
     pdbinfo = pose.pdb_info()
-
+    chains = ("H","L")
     for res in range(1, pose.total_residue()+1):
         for atom in range(1, pdbinfo.natoms(res)+1):
             pdbinfo.temperature(res,atom, 0.0)
                       
+    for num in range(1,3):        
+        for res in range(pose.conformation().chain_begin(num), pose.conformation().chain_begin(num)+4):
+            for atom in range(1, pdbinfo.natoms(res)+1):
+                pdbinfo.temperature(res,atom, 1.0)
+        
+    for chain in chains:
+        for res in range(pdbinfo.pdb2pose(chain, 73), pdbinfo.pdb2pose(chain, 93)):
+            for atom in range(1, pdbinfo.natoms(res)+1):
+                pdbinfo.temperature(res,atom, 1.0)
+    
     for i in range(1, 7):
         CDR_range = abinfo.get_CDR_start(CDRNameEnum(i), pose), abinfo.get_CDR_end(CDRNameEnum(i), pose)
         for r in range(CDR_range[0]-3, CDR_range[1]+4):
